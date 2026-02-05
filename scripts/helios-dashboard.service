@@ -1,0 +1,15 @@
+[Unit]
+Description=HELIOS ETF FLOW Streamlit Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=safrtam
+Group=safrtam
+WorkingDirectory=/home/safrtam/helios-etf
+ExecStart=/home/safrtam/.local/bin/uv run streamlit run helios/dashboard/app.py --server.port 8504 --server.headless true --server.address 127.0.0.1
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

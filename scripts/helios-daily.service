@@ -1,0 +1,15 @@
+[Unit]
+Description=HELIOS ETF FLOW Daily Pipeline
+After=network.target
+
+[Service]
+Type=oneshot
+User=safrtam
+Group=safrtam
+WorkingDirectory=/home/safrtam/helios-etf
+ExecStart=/home/safrtam/.local/bin/uv run python scripts/run_daily.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

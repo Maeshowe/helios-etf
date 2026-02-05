@@ -64,7 +64,7 @@ uv sync --extra dev    # Include dev dependencies
 
 # Configure API keys
 cp .env.example .env
-# Edit .env with your Polygon.io API key
+# Edit .env with your API keys (POLYGON_KEY required, UW_API_KEY recommended)
 ```
 
 ### Required API Keys
@@ -130,7 +130,7 @@ uv run mypy helios/                  # Type check
 helios_etf/
 ├── helios/
 │   ├── core/           # Types, constants, config, exceptions
-│   ├── ingest/         # Polygon API client, cache, rate limiter
+│   ├── ingest/         # Polygon + Unusual Whales API clients, cache, rate limiter
 │   ├── features/       # AP + RS calculation, feature aggregator
 │   ├── normalization/  # Rolling z-scores (63d window, 21 min obs)
 │   ├── scoring/        # CAS composite, state classifier, engine
@@ -145,7 +145,7 @@ helios_etf/
 
 ## Data Persistence
 
-- **API cache**: `data/raw/polygon/` (JSON, 7-day TTL)
+- **API cache**: `data/raw/polygon/` (JSON, 7-day TTL), `data/raw/unusual_whales/` (JSON, 1-day TTL)
 - **History**: `data/processed/helios/helios_history.parquet` (rows per date × ticker)
 - **Daily snapshot**: `data/processed/helios/{date}.parquet`
 
