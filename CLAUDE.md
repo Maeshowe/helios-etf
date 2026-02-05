@@ -31,23 +31,26 @@ uv run streamlit run helios/dashboard/app.py --server.port 8504
 
 ## Required API Keys
 
-| Provider   | Environment Variable |
-|------------|---------------------|
-| Polygon.io | POLYGON_KEY         |
-| FMP        | FMP_KEY             |
+| Provider   | Environment Variable | Required |
+|------------|---------------------|----------|
+| Polygon.io | POLYGON_KEY         | Yes      |
+| FMP        | FMP_KEY             | No (not used by daily pipeline) |
 
 ## Data Flow
 
 ```
-Polygon (ETF prices + SPY) + FMP (ETF net fund flows)
-  -> Async Ingest (rate-limited, cached)
-  -> Feature Extraction (AP: net flow, RS: excess return per sector)
+Polygon.io (ETF + SPY daily OHLCV, 5 RPM free tier)
+  -> DollarFlow = Volume × (Close − Open)     [AP: Allocation Pressure]
+  -> Excess Return = ETF return − SPY return   [RS: Relative Strength]
   -> Z-score Normalization (63d rolling, NO clipping)
   -> CAS = 0.6*AP + 0.4*RS (per sector)
-  -> State Classification (threshold-based)
+  -> State Classification (threshold-based, 5 states)
   -> Explanation Generation
-  -> Dashboard / Parquet persistence
+  -> Dashboard (port 8504) / Parquet persistence
 ```
+
+**Note:** AP originally targeted FMP ETF fund flow data, but `/stable/etf-fund-flow`
+does not exist. The daily pipeline uses Polygon dollar volume proxy instead.
 
 ## Critical Design Decisions (DO NOT CHANGE)
 
