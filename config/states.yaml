@@ -1,0 +1,54 @@
+# HELIOS ETF FLOW State Configuration
+#
+# These states describe ALLOCATION DIRECTION, not trading signals.
+# OVERWEIGHT means "capital is flowing in", NOT "buy".
+# UNDERWEIGHT means "capital is flowing out", NOT "sell".
+
+states:
+  OVERWEIGHT:
+    min: 1.0
+    max: null  # unbounded
+    description: "Strong positive allocation pressure"
+    interpretation: >
+      Significant net inflows and sustained outperformance versus SPY.
+      Capital is actively flowing into this sector.
+
+  ACCUMULATING:
+    min: 0.3
+    max: 1.0
+    description: "Building allocation pressure"
+    interpretation: >
+      Net inflows accelerating with above-average relative performance.
+      Sector is attracting incremental capital.
+
+  NEUTRAL:
+    min: -0.3
+    max: 0.3
+    description: "Balanced allocation"
+    interpretation: >
+      Balanced capital flows and performance roughly in line with SPY.
+      No clear directional bias in allocation.
+
+  DECREASING:
+    min: -1.0
+    max: -0.3
+    description: "Declining allocation pressure"
+    interpretation: >
+      Net outflows building with below-average relative performance.
+      Capital is rotating away from this sector.
+
+  UNDERWEIGHT:
+    min: null  # unbounded
+    max: -1.0
+    description: "Strong negative allocation pressure"
+    interpretation: >
+      Significant net outflows and sustained underperformance versus SPY.
+      Capital is actively leaving this sector.
+
+display:
+  colors:
+    OVERWEIGHT: "#22c55e"
+    ACCUMULATING: "#84cc16"
+    NEUTRAL: "#6b7280"
+    DECREASING: "#f59e0b"
+    UNDERWEIGHT: "#ef4444"

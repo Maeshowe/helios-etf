@@ -1,0 +1,38 @@
+api_sources:
+  polygon:
+    base_url: "https://api.polygon.io"
+    endpoints:
+      ticker_aggs: "/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}"
+      market_status: "/v1/marketstatus/now"
+    rate_limit:
+      requests_per_minute: 5
+      burst_size: 5
+    timeout_seconds: 30
+    retry:
+      max_attempts: 3
+      backoff_factor: 2.0
+    auth:
+      type: query_param
+      param_name: "apiKey"
+
+  fmp:
+    base_url: "https://financialmodelingprep.com"
+    endpoints:
+      etf_fund_flow: "/stable/etf-fund-flow"
+      etf_info: "/stable/etf-info"
+      historical_price: "/stable/historical-price-eod/full"
+    rate_limit:
+      requests_per_minute: 10
+      burst_size: 5
+    timeout_seconds: 30
+    retry:
+      max_attempts: 3
+      backoff_factor: 2.0
+    auth:
+      type: query_param
+      param_name: "apikey"
+
+cache:
+  enabled: true
+  ttl_days: 7
+  format: json

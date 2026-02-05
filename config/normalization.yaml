@@ -1,0 +1,19 @@
+normalization:
+  default_window: 63
+  min_observations: 21
+
+  features:
+    AP:
+      method: zscore
+      window: 63
+      clip: false  # NEVER clip - preserve tail information
+      description: "Allocation Pressure (z-score of net fund flow)"
+
+    RS:
+      method: zscore
+      window: 63
+      clip: false  # NEVER clip - preserve tail information
+      description: "Relative Strength (z-score of excess return vs SPY)"
+
+# CAS thresholds operate directly in z-score space.
+# No percentile ranking is used for state classification.
