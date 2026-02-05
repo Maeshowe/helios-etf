@@ -31,7 +31,8 @@ class Settings(BaseSettings):
 
     # API keys
     polygon_key: str = Field(..., validation_alias="POLYGON_KEY")
-    fmp_key: str = Field(..., validation_alias="FMP_KEY")
+    fmp_key: str = Field(default="", validation_alias="FMP_KEY")
+    uw_api_key: str = Field(default="", validation_alias="UW_API_KEY")
 
     # Paths
     data_dir: Path = Field(default=Path("data"))

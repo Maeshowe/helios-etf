@@ -31,17 +31,18 @@ uv run streamlit run helios/dashboard/app.py --server.port 8504
 
 ## Required API Keys
 
-| Provider   | Environment Variable | Required |
-|------------|---------------------|----------|
-| Polygon.io | POLYGON_KEY         | Yes      |
-| FMP        | FMP_KEY             | No (not used by daily pipeline) |
+| Provider        | Environment Variable | Required |
+|-----------------|---------------------|----------|
+| Polygon.io      | POLYGON_KEY         | Yes      |
+| Unusual Whales  | UW_API_KEY          | Recommended (AP fund flow) |
+| FMP             | FMP_KEY             | No       |
 
 ## Data Flow
 
 ```
-Polygon.io (ETF + SPY daily OHLCV, 5 RPM free tier)
-  -> DollarFlow = Volume × (Close − Open)     [AP: Allocation Pressure]
-  -> Excess Return = ETF return − SPY return   [RS: Relative Strength]
+Unusual Whales (/api/etfs/{t}/in-outflow)  -> AP: ETF fund flow (change_prem)
+  fallback: Polygon DollarFlow proxy       -> AP: Volume × (Close − Open)
+Polygon.io (ETF + SPY daily OHLCV)         -> RS: Excess Return vs SPY
   -> Z-score Normalization (63d rolling, NO clipping)
   -> CAS = 0.6*AP + 0.4*RS (per sector)
   -> State Classification (threshold-based, 5 states)
@@ -49,8 +50,7 @@ Polygon.io (ETF + SPY daily OHLCV, 5 RPM free tier)
   -> Dashboard (port 8504) / Parquet persistence
 ```
 
-**Note:** AP originally targeted FMP ETF fund flow data, but `/stable/etf-fund-flow`
-does not exist. The daily pipeline uses Polygon dollar volume proxy instead.
+**Note:** If UW_API_KEY is not set, AP falls back to Polygon dollar volume proxy.
 
 ## Critical Design Decisions (DO NOT CHANGE)
 

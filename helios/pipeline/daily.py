@@ -23,6 +23,7 @@ from helios.core.types import HeliosResult, SectorFeatureSet
 from helios.explain.generator import ExplanationGenerator
 from helios.features.aggregator import FeatureAggregator
 from helios.ingest.polygon import PolygonETFClient
+from helios.ingest.unusual_whales import UnusualWhalesClient
 from helios.normalization.pipeline import NormalizationPipeline
 from helios.scoring.engine import HeliosEngine
 
@@ -89,11 +90,12 @@ class DailyPipeline:
         # Load historical data for baselines
         self.normalization.load_history(up_to_date=trade_date)
 
-        # Step 1: Fetch full price history (async)
+        # Step 1: Fetch data (async)
         prices = await self._fetch_prices(trade_date)
+        uw_flows = await self._fetch_uw_flows(trade_date)
 
         # Step 2: Process ALL historical days to build rolling baselines
-        result = self._process_all_days(prices, trade_date)
+        result = self._process_all_days(prices, trade_date, uw_flows)
 
         # Step 3: Persist
         self._save_result(result)
@@ -132,26 +134,60 @@ class DailyPipeline:
 
         return prices
 
+    async def _fetch_uw_flows(
+        self,
+        trade_date: date,
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Fetch ETF fund flow data from Unusual Whales.
+
+        Returns empty dict if UW API key is not configured or request fails.
+        Pipeline falls back to Polygon dollar volume proxy in that case.
+
+        Args:
+            trade_date: End date for data fetch
+
+        Returns:
+            {ticker: DataFrame[date, net_flow]}
+        """
+        if not self.settings.uw_api_key:
+            logger.debug("No UW API key configured, using Polygon flow proxy")
+            return {}
+
+        from_date = trade_date - timedelta(days=120)
+        uw_flows: dict[str, pd.DataFrame] = {}
+
+        try:
+            async with UnusualWhalesClient(settings=self.settings) as uw:
+                uw_flows = await uw.get_all_sector_flows(from_date, trade_date)
+        except Exception as e:
+            logger.warning(f"Failed to fetch UW data, falling back to Polygon proxy: {e}")
+
+        return uw_flows
+
     def _process_all_days(
         self,
         prices: dict[str, pd.DataFrame],
         trade_date: date,
+        uw_flows: dict[str, pd.DataFrame] | None = None,
     ) -> HeliosResult:
         """
         Process all available historical days to build rolling baselines,
         saving every day's result to history.
 
-        Iterates through each trading day in the price history, computing
-        DollarFlow and daily returns per sector, feeding each day's features
-        through the normalization rolling window.
+        Uses Unusual Whales fund flow data for AP when available,
+        falls back to Polygon dollar volume proxy otherwise.
 
         Args:
             prices: {ticker: DataFrame[date, open, high, low, close, volume]}
             trade_date: Target date to score
+            uw_flows: {ticker: DataFrame[date, net_flow]} from UW (optional)
 
         Returns:
             HeliosResult for the target date
         """
+        if uw_flows is None:
+            uw_flows = {}
         # Collect all unique trading dates across all tickers
         spy_df = prices.get(BENCHMARK_TICKER)
         if spy_df is None or len(spy_df) < 2:
@@ -162,7 +198,11 @@ class DailyPipeline:
             )
 
         trading_dates = sorted(spy_df["date"].tolist())
-        logger.info(f"Processing {len(trading_dates)} trading days for baseline")
+        ap_source = "UW fund flow" if uw_flows else "Polygon proxy"
+        logger.info(
+            f"Processing {len(trading_dates)} trading days for baseline "
+            f"(AP source: {ap_source})"
+        )
 
         result = None
         all_rows: list[dict] = []
@@ -193,13 +233,25 @@ class DailyPipeline:
                 row_today = df[df["date"] == day]
                 row_prior = df[df["date"] == prior_day]
 
-                if not row_today.empty:
+                # AP: prefer UW fund flow, fall back to Polygon proxy
+                uw_df = uw_flows.get(ticker)
+                if uw_df is not None and not uw_df.empty:
+                    uw_row = uw_df[uw_df["date"] == day]
+                    if not uw_row.empty:
+                        sector_flows[ticker] = float(uw_row.iloc[0]["net_flow"])
+                    elif not row_today.empty:
+                        r = row_today.iloc[0]
+                        sector_flows[ticker] = float(r["volume"]) * (
+                            float(r["close"]) - float(r["open"])
+                        )
+                elif not row_today.empty:
                     r = row_today.iloc[0]
                     # DollarFlow = Volume * (Close - Open)
                     sector_flows[ticker] = float(r["volume"]) * (
                         float(r["close"]) - float(r["open"])
                     )
 
+                # RS: daily return from Polygon prices
                 if not row_today.empty and not row_prior.empty:
                     sector_returns[ticker] = (
                         float(row_today.iloc[0]["close"])

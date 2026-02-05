@@ -10,9 +10,9 @@ OVERWEIGHT means "capital is flowing IN", not "buy". UNDERWEIGHT means "capital 
 ## Architecture
 
 ```
-Polygon.io (ETF + SPY daily OHLCV)
-  → DollarFlow = Volume × (Close − Open)       [AP: Allocation Pressure]
-  → Excess Return = ETF return − SPY return     [RS: Relative Strength]
+Unusual Whales (/api/etfs/{t}/in-outflow)  → AP: ETF fund flow (change_prem)
+  fallback: Polygon DollarFlow proxy       → AP: Volume × (Close − Open)
+Polygon.io (ETF + SPY daily OHLCV)         → RS: Excess Return vs SPY
   → Z-score normalization (63-day rolling, NO clipping)
   → CAS = 0.6 × z_AP + 0.4 × z_RS             [per sector]
   → State classification (5 states, threshold-based)
@@ -24,7 +24,7 @@ Polygon.io (ETF + SPY daily OHLCV)
 
 | Component | Weight | Source | Description |
 |-----------|--------|--------|-------------|
-| AP (Allocation Pressure) | 0.60 | Polygon dollar volume proxy | `Volume × (Close − Open)` per sector |
+| AP (Allocation Pressure) | 0.60 | Unusual Whales ETF fund flow (Polygon proxy fallback) | Daily net creation/redemption flow per sector |
 | RS (Relative Strength) | 0.40 | Polygon daily returns | `ETF return − SPY return` |
 
 ### Allocation States
@@ -72,7 +72,8 @@ cp .env.example .env
 | Provider | Variable | Required | Notes |
 |----------|----------|----------|-------|
 | Polygon.io | `POLYGON_KEY` | Yes | Free tier (5 RPM) sufficient |
-| FMP | `FMP_KEY` | No | Not used by daily pipeline; retained for future ETF metadata |
+| Unusual Whales | `UW_API_KEY` | Recommended | ETF fund flow data for AP; falls back to Polygon proxy if missing |
+| FMP | `FMP_KEY` | No | Not used by daily pipeline |
 
 ## Usage
 
@@ -157,5 +158,5 @@ The pipeline processes ~80 historical trading days on each run to build rolling 
 3. **Thresholds are FROZEN** — direct z-score space, no percentile ranking
 4. **Universe is FROZEN** — 11 ETFs, not dynamically constructed
 5. **Per-sector independence** — 22 independent rolling windows (11 tickers × 2 features)
-6. **Polygon-only daily pipeline** — AP uses dollar volume proxy, not FMP fund flows
+6. **UW fund flow with Polygon fallback** — AP prefers Unusual Whales ETF creation/redemption data, falls back to Polygon dollar volume proxy
 7. **Sequential history processing** — all historical days processed to build baselines

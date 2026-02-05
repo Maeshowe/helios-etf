@@ -14,6 +14,7 @@ import sys
 from helios.core.config import get_settings
 from helios.ingest.fmp import FMPFlowClient
 from helios.ingest.polygon import PolygonETFClient
+from helios.ingest.unusual_whales import UnusualWhalesClient
 
 
 async def diagnose() -> bool:
@@ -39,19 +40,39 @@ async def diagnose() -> bool:
         print(f"  Health Check: ERROR - {e}")
         all_ok = False
 
+    # Check Unusual Whales
+    print("\n[Unusual Whales]")
+    if settings.uw_api_key:
+        print(f"  API Key: {settings.uw_api_key[:8]}...{settings.uw_api_key[-4:]}")
+        try:
+            async with UnusualWhalesClient(settings=settings) as client:
+                ok = await client.health_check()
+                status = "OK" if ok else "FAIL"
+                print(f"  Health Check: {status}")
+                if not ok:
+                    all_ok = False
+        except Exception as e:
+            print(f"  Health Check: ERROR - {e}")
+            all_ok = False
+    else:
+        print("  API Key: NOT CONFIGURED (using Polygon flow proxy)")
+
     # Check FMP
     print("\n[FMP]")
-    print(f"  API Key: {settings.fmp_key[:8]}...{settings.fmp_key[-4:]}")
-    try:
-        async with FMPFlowClient(settings=settings) as client:
-            ok = await client.health_check()
-            status = "OK" if ok else "FAIL"
-            print(f"  Health Check: {status}")
-            if not ok:
-                all_ok = False
-    except Exception as e:
-        print(f"  Health Check: ERROR - {e}")
-        all_ok = False
+    if settings.fmp_key:
+        print(f"  API Key: {settings.fmp_key[:8]}...{settings.fmp_key[-4:]}")
+        try:
+            async with FMPFlowClient(settings=settings) as client:
+                ok = await client.health_check()
+                status = "OK" if ok else "FAIL"
+                print(f"  Health Check: {status}")
+                if not ok:
+                    all_ok = False
+        except Exception as e:
+            print(f"  Health Check: ERROR - {e}")
+            all_ok = False
+    else:
+        print("  API Key: NOT CONFIGURED (optional)")
 
     print("\n" + "=" * 50)
     overall = "ALL SYSTEMS OK" if all_ok else "ISSUES DETECTED"
