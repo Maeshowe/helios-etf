@@ -1,7 +1,7 @@
 """
 API diagnostics script for HELIOS ETF FLOW.
 
-Checks connectivity and authentication for Polygon and FMP APIs.
+Checks connectivity and authentication for Polygon, Unusual Whales, and FMP APIs.
 
 Usage:
     uv run python scripts/diagnose_api.py
@@ -57,22 +57,19 @@ async def diagnose() -> bool:
     else:
         print("  API Key: NOT CONFIGURED (using Polygon flow proxy)")
 
-    # Check FMP
-    print("\n[FMP]")
+    # Check FMP (optional — not used by daily pipeline)
+    print("\n[FMP] (optional)")
     if settings.fmp_key:
         print(f"  API Key: {settings.fmp_key[:8]}...{settings.fmp_key[-4:]}")
         try:
             async with FMPFlowClient(settings=settings) as client:
                 ok = await client.health_check()
-                status = "OK" if ok else "FAIL"
+                status = "OK" if ok else "FAIL (not critical)"
                 print(f"  Health Check: {status}")
-                if not ok:
-                    all_ok = False
         except Exception as e:
-            print(f"  Health Check: ERROR - {e}")
-            all_ok = False
+            print(f"  Health Check: FAIL (not critical) - {e}")
     else:
-        print("  API Key: NOT CONFIGURED (optional)")
+        print("  API Key: NOT CONFIGURED (not used by pipeline)")
 
     print("\n" + "=" * 50)
     overall = "ALL SYSTEMS OK" if all_ok else "ISSUES DETECTED"
